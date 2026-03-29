@@ -1,7 +1,7 @@
-import { describe, expect, it } from 'vitest';
-import { CreateItemRequest } from '../types/item';
-import { createItemHandler } from '../handlers/items';
-import { REQUEST_VALIDATION_FAILED_ERROR } from '../constants';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { CreateItemRequest, ExamItem } from '../types/item';
+import { createItemHandler, getItemHandler } from '../handlers/items';
+import { NOT_FOUND_ERROR, REQUEST_VALIDATION_FAILED_ERROR } from '../constants';
 
 const itemData = {
   subject: 'AP Biology',
@@ -176,6 +176,47 @@ describe('Items', () => {
           metadata: { ...itemData.metadata, status: 'fake-status' },
         });
         const result = await createItemHandler(item);
+
+        expect(result.statusCode).toBe(400);
+        expect(result.body).toHaveProperty(
+          'error',
+          REQUEST_VALIDATION_FAILED_ERROR
+        );
+      });
+    });
+  });
+
+  describe('getItemHandler', () => {
+    describe('success', () => {
+      let item = buildItem();
+      let itemId: ExamItem['id'];
+
+      beforeEach(async () => {
+        const { body } = await createItemHandler(item);
+        if ('id' in body) {
+          itemId = body.id;
+        }
+      });
+
+      it('should get an item by id', async () => {
+        const result = await getItemHandler(itemId);
+
+        expect(result.body).toMatchObject({ id: itemId, ...item });
+      });
+    });
+
+    describe('failure', () => {
+      it('should return 404 if not found', async () => {
+        const nonExistentId = '00000000-0000-0000-0000-000000000000';
+        const result = await getItemHandler(nonExistentId);
+
+        expect(result.statusCode).toBe(404);
+        expect(result.body).toHaveProperty('error', NOT_FOUND_ERROR);
+      });
+
+      it('should return 400 if not a valid id', async () => {
+        const badId = 'bad-id';
+        const result = await getItemHandler(badId);
 
         expect(result.statusCode).toBe(400);
         expect(result.body).toHaveProperty(
