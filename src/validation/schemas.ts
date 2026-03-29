@@ -2,7 +2,7 @@ import * as z from "zod";
 
 // constants
 const MIN_OPTIONS_LENGTH = 2;
-const REQUEST_VALIDATION_FAILED_ERROR = "Request validation failed";
+export const REQUEST_VALIDATION_FAILED_ERROR = "Request validation failed";
 
 // enums
 export const ItemTypeEnum = z.enum([
