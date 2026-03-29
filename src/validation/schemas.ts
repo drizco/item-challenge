@@ -20,6 +20,8 @@ export const SecurityLevelEnum = z.enum([
 ]);
 
 // schemas
+export const IdParamSchema = z.string().uuid();
+
 export const CreateItemRequestSchema = z
   .strictObject({
     subject: z.string().min(1),
