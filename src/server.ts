@@ -6,26 +6,26 @@
  */
 
 import { createServer, IncomingMessage, ServerResponse } from 'http';
-import { getItemHandler } from './handlers/example.js';
-import { createItemHandler } from './handlers/items.js';
+import {
+  createItemHandler,
+  getItemHandler,
+  updateItemHandler,
+} from './handlers/items.js';
+import { BAD_REQUEST_ERROR } from './constants.js';
 
 const PORT = process.env.PORT || 3000;
 
 async function handleRequest(req: IncomingMessage, res: ServerResponse) {
   const { method, url } = req;
 
-  // Parse request body
-  let body = '';
-  req.on('data', chunk => body += chunk);
-  await new Promise(resolve => req.on('end', resolve));
-
-  const parsedBody = body ? JSON.parse(body) : null;
-
   console.log(`${method} ${url}`);
 
   // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader(
+    'Access-Control-Allow-Methods',
+    'GET, POST, PUT, DELETE, OPTIONS'
+  );
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (method === 'OPTIONS') {
@@ -34,17 +34,31 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
     return;
   }
 
+  // Parse request body
+  let body = '';
+  let parsedBody = null;
+  req.on('data', chunk => (body += chunk));
+  await new Promise(resolve => req.on('end', resolve));
+
+  try {
+    parsedBody = body ? JSON.parse(body) : null;
+  } catch (error) {
+    res.writeHead(400, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: BAD_REQUEST_ERROR }));
+    return;
+  }
+
   try {
     let result;
 
-    // Example routes - implement your own routing logic
-    if (method === 'GET' && url === '/api/items/test') {
-      result = await getItemHandler('test');
-    } else if (method === 'POST' && url === '/api/items') {
+    if (method === 'POST' && url === '/api/items') {
       result = await createItemHandler(parsedBody);
     } else if (method === 'GET' && url?.startsWith('/api/items/')) {
       const id = url.split('/').pop();
       result = await getItemHandler(id!);
+    } else if (method === 'PUT' && url?.startsWith('/api/items/')) {
+      const id = url.split('/').pop();
+      result = await updateItemHandler(id!, parsedBody);
     } else {
       result = {
         statusCode: 404,
