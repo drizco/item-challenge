@@ -22,28 +22,35 @@ export const SecurityLevelEnum = z.enum([
 // schemas
 export const IdParamSchema = z.string().uuid();
 
+const BaseFields = {
+  subject: z.string().min(1),
+  itemType: ItemTypeEnum,
+  difficulty: z.number().int().min(1).max(5),
+  securityLevel: SecurityLevelEnum,
+};
+
+const ContentSchema = z.strictObject({
+  question: z.string().min(1),
+  options: z.array(z.string().min(1)).optional(),
+  correctAnswer: z.string().min(1),
+  explanation: z.string().min(1),
+});
+
+const MetadataSchema = z.strictObject({
+  author: z.string().min(1),
+  status: StatusEnum,
+  tags: z.array(z.string().min(1)),
+});
+
 export const CreateItemRequestSchema = z
   .strictObject({
-    subject: z.string().min(1),
-    itemType: ItemTypeEnum,
-    difficulty: z.number().int().min(1).max(5),
-    content: z.strictObject({
-      question: z.string().min(1),
-
-      options: z.array(z.string().min(1)).optional(),
-      correctAnswer: z.string().min(1),
-      explanation: z.string().min(1),
-    }),
-    metadata: z.strictObject({
-      author: z.string().min(1),
-      status: StatusEnum,
-      tags: z.array(z.string().min(1)),
-    }),
-    securityLevel: SecurityLevelEnum,
+    ...BaseFields,
+    content: ContentSchema,
+    metadata: MetadataSchema,
   })
-  // options are required for multiple choice and must have a min length
   .refine(
     itemRequest =>
+      // options are required for multiple choice and must have a min length
       itemRequest.itemType === 'multiple-choice'
         ? itemRequest.content.options &&
           itemRequest.content.options.length >= MIN_OPTIONS_LENGTH
@@ -53,6 +60,14 @@ export const CreateItemRequestSchema = z
       path: ['content', 'options'],
     }
   );
+
+export const UpdateItemRequestSchema = z
+  .strictObject({
+    ...BaseFields,
+    content: ContentSchema.partial().optional(),
+    metadata: MetadataSchema.partial().optional(),
+  })
+  .partial();
 
 // helpers
 export function validateRequest<T>(schema: z.ZodSchema<T>, data: unknown) {
