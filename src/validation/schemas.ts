@@ -1,22 +1,22 @@
-import * as z from "zod";
+import * as z from 'zod';
 import {
   MIN_OPTIONS_LENGTH,
   REQUEST_VALIDATION_FAILED_ERROR,
-} from "../constants";
+} from '../constants';
 
 // enums
 export const ItemTypeEnum = z.enum([
-  "multiple-choice",
-  "free-response",
-  "essay",
+  'multiple-choice',
+  'free-response',
+  'essay',
 ]);
 
-export const StatusEnum = z.enum(["draft", "review", "approved", "archived"]);
+export const StatusEnum = z.enum(['draft', 'review', 'approved', 'archived']);
 
 export const SecurityLevelEnum = z.enum([
-  "standard",
-  "secure",
-  "highly-secure",
+  'standard',
+  'secure',
+  'highly-secure',
 ]);
 
 // schemas
@@ -41,15 +41,15 @@ export const CreateItemRequestSchema = z
   })
   // options are required for multiple choice and must have a min length
   .refine(
-    (itemRequest) =>
-      itemRequest.itemType === "multiple-choice"
+    itemRequest =>
+      itemRequest.itemType === 'multiple-choice'
         ? itemRequest.content.options &&
           itemRequest.content.options.length >= MIN_OPTIONS_LENGTH
         : true,
     {
       message: `multiple-choice items require at least ${MIN_OPTIONS_LENGTH} options`,
-      path: ["content", "options"],
-    },
+      path: ['content', 'options'],
+    }
   );
 
 // helpers
