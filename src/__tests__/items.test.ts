@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { CreateItemRequest, ExamItem } from '../types/item';
-import { createItemHandler, getItemHandler } from '../handlers/items';
+import {
+  createItemHandler,
+  getItemHandler,
+  updateItemHandler,
+} from '../handlers/items';
 import { NOT_FOUND_ERROR, REQUEST_VALIDATION_FAILED_ERROR } from '../constants';
 
 const itemData = {
@@ -37,6 +41,9 @@ function buildItem(overrides: Partial<CreateItemRequest> = {}) {
 }
 
 describe('Items', () => {
+  const nonExistentId = '00000000-0000-0000-0000-000000000000';
+  const badId = 'bad-id';
+
   describe('createItemHandler', () => {
     describe('success', () => {
       it('should create a valid multiple-choice item', async () => {
@@ -207,7 +214,6 @@ describe('Items', () => {
 
     describe('failure', () => {
       it('should return 404 if not found', async () => {
-        const nonExistentId = '00000000-0000-0000-0000-000000000000';
         const result = await getItemHandler(nonExistentId);
 
         expect(result.statusCode).toBe(404);
@@ -215,8 +221,101 @@ describe('Items', () => {
       });
 
       it('should return 400 if not a valid id', async () => {
-        const badId = 'bad-id';
         const result = await getItemHandler(badId);
+
+        expect(result.statusCode).toBe(400);
+        expect(result.body).toHaveProperty(
+          'error',
+          REQUEST_VALIDATION_FAILED_ERROR
+        );
+      });
+    });
+  });
+
+  describe('updateItemHandler', () => {
+    let item: ExamItem;
+
+    beforeEach(async () => {
+      const { body } = await createItemHandler(buildItem());
+      if ('id' in body) {
+        item = body;
+      }
+    });
+    describe('success', () => {
+      it('should update base properties', async () => {
+        const result = await updateItemHandler(item.id, {
+          subject: 'AP Chemistry',
+        });
+
+        expect(result.statusCode).toBe(200);
+        expect(result.body).toHaveProperty('subject', 'AP Chemistry');
+        expect(item).toHaveProperty('subject', 'AP Biology');
+      });
+
+      it('should update nested properties', async () => {
+        const result = await updateItemHandler(item.id, {
+          content: { question: 'To be or not to be?' },
+        });
+
+        expect(result.statusCode).toBe(200);
+        expect(result.body).toHaveProperty('content');
+        if ('content' in result.body) {
+          expect(result.body.content.question).not.toBe(item.content.question);
+          expect(result.body.content.question).toBe('To be or not to be?');
+        }
+      });
+
+      it('should increment metadata version', async () => {
+        const result = await updateItemHandler(item.id, {
+          subject: 'AP Chemistry',
+        });
+
+        expect(result.statusCode).toBe(200);
+        expect(result.body).toHaveProperty('metadata');
+        if ('metadata' in result.body) {
+          expect(result.body.metadata.version).toBeGreaterThan(
+            item.metadata.version
+          );
+        }
+      });
+    });
+
+    describe('failure', () => {
+      it('should return 404 if not found', async () => {
+        const result = await updateItemHandler(nonExistentId, {
+          subject: 'AP Chemistry',
+        });
+
+        expect(result.statusCode).toBe(404);
+        expect(result.body).toHaveProperty('error', NOT_FOUND_ERROR);
+      });
+
+      it('should return 400 if not a valid id', async () => {
+        const result = await updateItemHandler(badId, {
+          subject: 'AP Chemistry',
+        });
+
+        expect(result.statusCode).toBe(400);
+        expect(result.body).toHaveProperty(
+          'error',
+          REQUEST_VALIDATION_FAILED_ERROR
+        );
+      });
+
+      it('should return 400 for invalid field values', async () => {
+        const result = await updateItemHandler(badId, {
+          difficulty: 10,
+        });
+
+        expect(result.statusCode).toBe(400);
+        expect(result.body).toHaveProperty(
+          'error',
+          REQUEST_VALIDATION_FAILED_ERROR
+        );
+      });
+
+      it('should return 400 for an empty body', async () => {
+        const result = await updateItemHandler(badId, {});
 
         expect(result.statusCode).toBe(400);
         expect(result.body).toHaveProperty(
