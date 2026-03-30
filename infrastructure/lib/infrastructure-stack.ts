@@ -1,8 +1,8 @@
 import * as cdk from 'aws-cdk-lib/core';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import { Construct } from 'constructs';
-// import * as sqs from 'aws-cdk-lib/aws-sqs';
 
 export class InfrastructureStack extends cdk.Stack {
   examItemsTable: dynamodb.Table;
@@ -16,6 +16,8 @@ export class InfrastructureStack extends cdk.Stack {
     this.initializeTable();
 
     this.initializeFunctions();
+
+    this.initializeApi();
   }
 
   initializeTable() {
@@ -79,5 +81,29 @@ export class InfrastructureStack extends cdk.Stack {
 
     this.examItemsTable.grantReadWriteData(this.updateItemHandler);
   }
+
+  initializeApi() {
+    const api = new apigateway.RestApi(this, 'ExamItemsApi', {
+      restApiName: 'ExamItems',
+    });
+
+    const items = api.root.addResource('api').addResource('items');
+
+    items.addMethod(
+      'POST',
+      new apigateway.LambdaIntegration(this.createItemHandler)
+    );
+
+    const item = items.addResource('{id}');
+
+    item.addMethod(
+      'GET',
+      new apigateway.LambdaIntegration(this.getItemHandler)
+    );
+
+    item.addMethod(
+      'PUT',
+      new apigateway.LambdaIntegration(this.updateItemHandler)
+    );
   }
 }
